@@ -1,80 +1,122 @@
 import streamlit as st
+from PIL import Image
+import pytesseract
 
-st.set_page_config(page_title="MediAssist AI", layout="centered")
+# ------------------ OCR SETUP ------------------
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
-# Sidebar menu
-menu = st.sidebar.selectbox("📌 Menu", ["🏠 Home", "🩺 Analyze Problem", "ℹ️ About"])
+# ------------------ AI LOGIC (NO API) ------------------
+def get_ai_response(symptoms):
+    symptoms = symptoms.lower()
 
-# ---------------- HOME ----------------
-if menu == "🏠 Home":
-    st.title("🩺 MediAssist AI")
-    st.subheader("AI-Powered Healthcare Assistant")
+    if ("chest" in symptoms and "pain" in symptoms) or "chestpain" in symptoms:
+        return "🚨 This could indicate a serious cardiac condition. Immediate medical attention is required. (Critical classification)"
 
-    st.write("""
-    Welcome to MediAssist AI!
+    elif "fever" in symptoms and "headache" in symptoms:
+        return "Possible viral infection (basic classification). Stay hydrated, take rest, and monitor symptoms."
 
-    This system helps patients:
-    - Understand their medical problems
-    - Get basic guidance
-    - Reduce confusion about health conditions
+    elif "fever" in symptoms:
+        return "This may be a mild infection (basic classification). Stay hydrated and rest."
 
-    👉 Use the menu to analyze your medical problem.
-    """)
+    elif "headache" in symptoms:
+        return "This could be due to stress, dehydration, or lack of sleep (basic classification)."
 
-# ---------------- ANALYZE ----------------
-elif menu == "🩺 Analyze Problem":
-    st.title("🧠 Analyze Your Medical Problem")
+    elif "cough" in symptoms:
+        return "This may be a common cold or respiratory issue (basic classification)."
 
-    user_input = st.text_area("📝 Describe your symptoms or medical issue")
+    else:
+        return "Symptoms are unclear. Unable to classify condition. Please consult a healthcare professional."
 
-    language = st.selectbox("🌐 Choose Language", ["English", "Hindi", "Telugu"])
+# ------------------ PAGE CONFIG ------------------
+st.set_page_config(page_title="MediAssist AI", page_icon="🏥", layout="wide")
 
-    if st.button("Analyze Problem"):
-        if user_input:
+# ------------------ HEADER ------------------
+st.title("🏥 MediAssist AI")
+st.subheader("AI-powered Healthcare Support System with Safety & Compliance")
 
-            # Response (more like conversation)
-            response = f"""
-            🤖 Based on your input: "{user_input}"
+# ------------------ TABS ------------------
+tab1, tab2, tab3 = st.tabs(["📄 Report Simplifier", "🩺 Symptom Checker", "ℹ️ About"])
 
-            It appears that this could be related to a general health condition that needs attention.
+# ------------------ TAB 1 (FIXED UPLOAD SECTION) ------------------
+with tab1:
+    st.header("📄 Upload Medical Report")
 
-            ✔️ Possible concerns:
-            - Mild to moderate health issue
-            - Needs proper care and monitoring
+    st.info("📌 Please upload clear image (jpg/png) of medical report")
 
-            ✔️ What you should do:
-            - Follow basic precautions
-            - Maintain good diet and hydration
-            - Consult a doctor if symptoms continue
+    file = st.file_uploader("Upload report image", type=["png", "jpg", "jpeg"])
 
-            ✔️ Important:
-            Do not ignore symptoms. Early care helps prevent complications.
-            """
+    if file:
+        try:
+            image = Image.open(file)
+            st.image(image, caption="Uploaded Report")
 
-            # Language handling
-            if language == "Hindi":
-                response = "आपकी समस्या के आधार पर, यह एक स्वास्थ्य स्थिति हो सकती है जिसके लिए ध्यान आवश्यक है। डॉक्टर से परामर्श करें।"
-            elif language == "Telugu":
-                response = "మీ సమస్య ఆధారంగా ఇది ఆరోగ్య సమస్య కావచ్చు. దయచేసి డాక్టర్‌ను సంప్రదించండి."
+            # OCR extraction
+            text = pytesseract.image_to_string(image)
 
-            st.success(response)
+            st.success("✅ Report processed successfully")
+
+            st.subheader("📊 Extracted Data:")
+            st.write(text)
+
+            st.subheader("🧠 AI Explanation")
+
+            if "fever" in text.lower():
+                st.info("The report suggests possible infection or fever-related condition.")
+
+            elif "glucose" in text.lower():
+                st.info("The report indicates glucose levels. Monitor for diabetes risk.")
+
+            elif "bp" in text.lower() or "pressure" in text.lower():
+                st.info("The report may indicate blood pressure-related values. Monitor regularly.")
+
+            else:
+                st.info("Report analyzed. Please consult a doctor for detailed interpretation.")
+
+        except:
+            st.error("❌ Please upload a valid image file (jpg/png)")
+
+# ------------------ TAB 2 ------------------
+with tab2:
+    st.header("🩺 Symptom Checker")
+
+    symptoms = st.text_area("Enter your symptoms")
+
+    if st.button("Analyze"):
+        if symptoms.strip() == "":
+            st.warning("⚠️ Please enter symptoms")
 
         else:
-            st.error("Please enter your problem.")
+            with st.spinner("Analyzing symptoms..."):
+                response = get_ai_response(symptoms)
 
-# ---------------- ABOUT ----------------
-elif menu == "ℹ️ About":
-    st.title("ℹ️ About MediAssist AI")
+                if "critical" in response.lower() or "🚨" in response:
+                    st.error(response)
+                else:
+                    st.success(response)
+
+# ------------------ TAB 3 ------------------
+with tab3:
+    st.header("ℹ️ About MediAssist AI")
 
     st.write("""
-    MediAssist AI is an intelligent healthcare support system designed to:
+    **MediAssist AI** is a domain-specific healthcare assistant designed to:
 
-    - Simplify medical understanding
-    - Assist rural and elderly patients
-    - Provide basic healthcare guidance
+    ✔ Execute symptom-based analysis workflows  
+    ✔ Provide basic condition classification  
+    ✔ Handle edge cases (e.g., chest pain detection)  
+    ✔ Ensure safe and compliant AI responses  
 
-    ⚠️ This system does not replace doctors.
-    Always consult a medical professional for serious conditions.
+    ### 🔒 Safety & Compliance
+    - Built with healthcare safety guardrails  
+    - Avoids harmful or misleading advice  
+    - Recommends professional consultation when needed  
 
-    👩‍💻 Developed for ET AI Hackathon
+    ### 🎯 Goal
+    Make healthcare understandable and accessible for everyone.
+
+    ⚠️ This system does NOT replace doctors.
     """)
+
+# ------------------ FOOTER ------------------
+st.markdown("---")
+st.caption("⚠️ Disclaimer: This system provides educational guidance only. Always consult a healthcare professional.")
